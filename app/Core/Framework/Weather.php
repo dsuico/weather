@@ -55,6 +55,4 @@ abstract class Weather {
 
     $this->api .= strpos('?', $this->api) ? $params : "?{$params}";
   }
-
-
 }

@@ -17,17 +17,34 @@ class Location {
 
   public function get($filters = [], $load = [])
   {
-    return $this->model->where($filters)->get()->load($load);
+    if(\Cache::has('hasNewLocation')) {
+      $locations = $this->model->where($filters)->get()->load($load);
+      $this->setLocationCache($locations);
+      \Cache::forget('hasNewLocation');
+    } else {
+      $locations = \Cache::has('locations') ? 
+        \Cache::get('locations') : $this->model->where($filters)->get()->load($load);
+      if($locations->count())
+      $this->setLocationCache($locations);
+    }
+
+    return $locations;
   }
 
-  public function store($data, $apiResult)
+  public function setLocationCache($locations)
+  {
+    \Cache::forget('locations');
+    \Cache::add('locations', $locations);
+  }
+
+  public function store($data, $sources)
   {
     $this->model->city    = $data['city'];
     $this->model->country = $data['country'];
     
     $this->model->save();
     $this->model->temperature()->create([
-      'temp' => $this->calculateTemperature($apiResult)
+      'temp' => $this->calculateTemperature($sources)
 
     ]);
 

@@ -15,30 +15,22 @@ class LocationController extends Controller
 
     public function fetch()
     {
-        return view('welcome', ['data' => $this->location->get([],['temperature'])]);
+        return view('welcome', ['data' => $this->location->get([], ['temperature']) ]);
     }
 
     public function store(SaveLocation $request)
     {
-        $errors = [];
+        $event = new \App\Events\OnBeforeSaveLocationEvent($this->location, $request);
+        event($event);
 
-        $wsRes = app('weatherstack')->init($request->validated())->request();
-        
-        if($wsRes->errors)
-            $errors['ws'] = $wsRes->getErrors();
-
-        $owmRes = app('openweathermap')->init($request->validated())->request();
-
-        if($owmRes->errors)
-            $errors['owm'] = $owmRes->getErrors();
-
-        if(empty($errors)) {
-            $location = $this->location->store($request->validated(), [$wsRes, $owmRes]);
+        if(empty($event->errors)) {
+            $location = $this->location->store($request->validated(), collect($event->sources));
             $request->session()->flash('success', true);
             $request->session()->flash('message', 'Your location temperature is ' . $location->temperature->temp);
+            \Cache::forever('hasNewLocation', true);
         } else {
             $request->session()->flash('success', false);
-            $request->session()->put(['store_location' => $errors]);
+            $request->session()->put(['store_location' => $event->errors]);
         }
 
         return redirect('/');

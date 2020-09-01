@@ -2,14 +2,11 @@
 
 namespace App\Traits;
 
-trait TemperatureTrait {
-  public function calculateTemperature($result)
-  {
-    $temp = 0;
-    foreach($result as $api) {
-      $temp += $api->data['temperature'];
-    }
+use Illuminate\Support\Collection;
 
-    return $temp / count($result);
+trait TemperatureTrait {
+  public function calculateTemperature(Collection $sources)
+  {
+    return $sources->sum('data.temperature') / $sources->count();
   }
 }
