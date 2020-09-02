@@ -16,21 +16,15 @@ class LocationController extends Controller
 
     public function store(SaveLocation $request)
     {
-        $errors = [];
-
-        $wsRes = app('weatherstack')->init($request->validated())->request();
-        if($wsRes->errors)
-            $errors['ws'] = $wsRes->getErrors();
-
-        $owmRes = app('openweathermap')->init($request->validated())->request();
-        if($owmRes->errors)
-            $errors['owm'] = $owmRes->getErrors();
-
-        if(empty($errors)) {
-            $result = $this->location->store($request->validated(), [$wsRes, $owmRes]);
+        $event = new \App\Events\OnBeforeSaveLocationEvent($this->location, $request);
+        event($event);
+        
+        if(empty($event->errors)) {
+            $result = $this->location->store($request->validated(), collect($event->sources));
+            \Cache::forever('hasNewLocation', true);
         }
 
-        $data       = isset($result) ? $result : $errors;
+        $data       = isset($result) ? $result : $event->errors;
         $statusCode = !empty($errors) ? 400 : 200;
 
         return response()->json($data, $statusCode);
